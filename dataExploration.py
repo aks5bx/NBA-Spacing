@@ -40,6 +40,7 @@ pbp_ptd = ptd_shortened.merge(pbp, left_on = ['game_clock', 'quarter'], right_on
 pbp_ptd['SCORE'] = pbp_ptd['SCORE'].fillna(method='ffill')
 pbp_ptd['SCOREMARGIN'] = pbp_ptd['SCOREMARGIN'].fillna(method='ffill')
 pbp_ptd['SCOREMARGIN'] = pbp_ptd['SCOREMARGIN'].map({'TIE': 0})
+pbp_ptd['points_scored'] = abs(pbp_ptd.SCOREMARGIN == pbp_ptd.SCOREMARGIN.shift())
 
 
 
