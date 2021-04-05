@@ -105,34 +105,37 @@ def hullSpacing(playDF):
 
 ## Function defines a dataframe based on row 
 def computeHullSpacing(row):
-    if teamDict['team1'] == row['team_id']:
-        team = 'team1'
-    elif teamDict['team2'] == row['team_id']:
-        team = 'team2'
-    else:
-        return -99
-
-    if team == 'team1':
-        if row['team1_hullSpacing'] > 0:
-            pass
+    try:
+        if teamDict['team1'] == row['team_id']:
+            team = 'team1'
+        elif teamDict['team2'] == row['team_id']:
+            team = 'team2'
         else:
-            subset_df = full_game_data[(full_game_data.team_id == row['team_id']) & (full_game_data.game_clock == row['game_clock']) & (full_game_data.shot_clock == row['shot_clock']) & (full_game_data.quarter == row['quarter'])] 
-            
-            hullSpacingVal = hullSpacing(subset_df)
+            return -99
 
-            full_game_data.loc[ ( (full_game_data['game_clock'] == row['game_clock']) & (full_game_data['shot_clock'] == row['shot_clock'] )  &  (full_game_data['quarter'] == row['quarter'])  ) , 'team1_hullSpacing'] = hullSpacingVal
+        if team == 'team1':
+            if row['team1_hullSpacing'] > 0:
+                pass
+            else:
+                subset_df = full_game_data[(full_game_data.team_id == row['team_id']) & (full_game_data.game_clock == row['game_clock']) & (full_game_data.quarter == row['quarter'])] 
+                
+                hullSpacingVal = hullSpacing(subset_df)
 
-            print(full_game_data['team1_hullSpacing'])
+                full_game_data.loc[ ( (full_game_data['game_clock'] == row['game_clock'])  &  (full_game_data['quarter'] == row['quarter'])  ) , 'team1_hullSpacing'] = hullSpacingVal
 
-    elif team == 'team2':
-        if row['team2_hullSpacing'] > 0:
-            pass
-        else:
-            subset_df = full_game_data[(full_game_data.team_id == row['team_id']) & (full_game_data.game_clock == row['game_clock']) & (full_game_data.shot_clock == row['shot_clock']) & (full_game_data.quarter == row['quarter'])] 
-            
-            hullSpacingVal = hullSpacing(subset_df)
+        elif team == 'team2':
+            if row['team2_hullSpacing'] > 0:
+                pass
+            else:
+                subset_df = full_game_data[(full_game_data.team_id == row['team_id']) & (full_game_data.game_clock == row['game_clock']) & (full_game_data.quarter == row['quarter'])] 
+                
+                hullSpacingVal = hullSpacing(subset_df)
 
-            full_game_data.loc[ ( (full_game_data['game_clock'] == row['game_clock']) & (full_game_data['shot_clock'] == row['shot_clock'] )  &  (full_game_data['quarter'] == row['quarter'])  ) , 'team2_hullSpacing'] = hullSpacingVal
+                full_game_data.loc[ ( (full_game_data['game_clock'] == row['game_clock']) & (full_game_data['quarter'] == row['quarter'])  ) , 'team2_hullSpacing'] = hullSpacingVal
+    
+    except:
+        print('---------------------------------')
+        print(row)
 
 
 full_game_data.apply(lambda row: computeHullSpacing(row), axis=1)
