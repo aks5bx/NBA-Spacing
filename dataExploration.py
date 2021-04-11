@@ -8,17 +8,19 @@ from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from tqdm import tqdm
+tqdm_notebook().pandas()
 
 def x_round(x):
     return math.floor(x*4)/4
 
 ## ptd - player tracking data
-ptd = pd.read_csv('data/csv/0021500001.csv')
+ptd = pd.read_csv('data/csv/0021500490.csv')
 ptd['game_clock'] = ptd.apply(lambda row: x_round(row['game_clock']), axis=1)
 ptd_shortened = ptd.drop_duplicates(subset= ['game_clock', 'quarter', 'player_id'], keep='last')
 
 ## pbp - play by play
-pbp = pd.read_csv('data/events/0021500001.csv')
+pbp = pd.read_csv('data/events/0021500490.csv')
 # pbp = pbp[['EVENTNUM', 'EVENTMSGTYPE', 'EVENTMSGACTIONTYPE', 'PERIOD',
 #        'PCTIMESTRING', 'HOMEDESCRIPTION',
 #        'VISITORDESCRIPTION', 'SCORE', 'SCOREMARGIN']]
@@ -138,10 +140,58 @@ def computeHullSpacing(row):
         print(row)
 
 
-full_game_data.apply(lambda row: computeHullSpacing(row), axis=1)
+full_game_data.progress_apply(lambda row: computeHullSpacing(row), axis=1)
 
 
 
+#%%
+#################################
+### SPACING IMPACT ON SCORING ###
+#################################
+
+## Spacing vs Scoring Rate
+def generateSpacingScoringTable(team):
+    ssDict = {}
+    ind = 0
+    thresholds = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 100000]
+
+    if team == 'team1':
+
+        for threshold in thresholds:
+            teamSpacingThreshold = full_game_data[(full_game_data.team1_hullSpacing > threshold) & (full_game_data.team1_hullSpacing <= thresholds[ind + 1])]
+
+            teamScoringRate_total = len(teamSpacingThreshold[teamSpacingThreshold.team_scored == str(float(teamDict[team]))]) / len(teamSpacingThreshold)
+
+            ssDict[threshold] = teamScoringRate_total
+            ind += 1
+
+            if thresholds[ind] > 1000:
+                break
+
+        resDF = pd.DataFrame(ssDict.items(), columns = ['Spacing Range', 'Scoring Rate'])
+
+        resDF.plot.scatter(x='Spacing Range', y='Scoring Rate')
+
+        return resDF
+
+    if team == 'team2':
+
+        for threshold in thresholds:
+            teamSpacingThreshold = full_game_data[(full_game_data.team2_hullSpacing > threshold) & (full_game_data.team2_hullSpacing <= thresholds[ind + 1])]
+
+            teamScoringRate_total = len(teamSpacingThreshold[teamSpacingThreshold.team_scored == str(float(teamDict[team]))]) / len(teamSpacingThreshold)
+
+            ssDict[threshold] = teamScoringRate_total
+            ind += 1
+
+            if thresholds[ind] > 1000:
+                break
+
+        resDF = pd.DataFrame(ssDict.items(), columns = ['Spacing Range', 'Scoring Rate'])
+
+        resDF.plot.scatter(x='Spacing Range', y='Scoring Rate')
+
+        return resDF
 
 ## Plot points 
 # plt.plot(points[:,0], points[:,1], 'o')
@@ -154,4 +204,8 @@ full_game_data.apply(lambda row: computeHullSpacing(row), axis=1)
 ### SPACING METHOD 2: UNGUARDED AREA ###
 ########################################
 
-
+# 1. Calculate total area of the polygon 
+# 2. calculate total area of the area around the point (25 pi), let’s call this A_Point
+# 3. Find the intersection between the area of the shape and A_Point
+# 4. Use the value in step 3 to determine the amount of A_Point that exists outside of the polygon, call that A_Point2
+# 5. Do total area of polygon - A_Point2
