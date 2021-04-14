@@ -209,3 +209,18 @@ def generateSpacingScoringTable(team):
 # 3. Find the intersection between the area of the shape and A_Point
 # 4. Use the value in step 3 to determine the amount of A_Point that exists outside of the polygon, call that A_Point2
 # 5. Do total area of polygon - A_Point2
+from shapely.geometry import Polygon
+import math
+pi = math.pi
+
+sampleFGD = full_game_data[(full_game_data.game_clock == 718.50) & (full_game_data.quarter == 1)]
+
+courtPolygon = Polygon([(0,0),(0,50),(94,0),(94,50)])
+
+def generateCircle(xCoor, yCoor, radius, n):
+    return [((math.cos(2*pi/n*x)* radius + xCoor) , (math.sin(2*pi/n*x)* radius) + yCoor) for x in range(0,n+1)]
+
+
+
+
+# %%
