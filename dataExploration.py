@@ -209,16 +209,77 @@ def generateSpacingScoringTable(team):
 # 3. Find the intersection between the area of the shape and A_Point
 # 4. Use the value in step 3 to determine the amount of A_Point that exists outside of the polygon, call that A_Point2
 # 5. Do total area of polygon - A_Point2
-from shapely.geometry import Polygon
+from shapely.geometry.polygon import LinearRing, Polygon
 import math
 pi = math.pi
 
-sampleFGD = full_game_data[(full_game_data.game_clock == 718.50) & (full_game_data.quarter == 1)]
+sampleFGD = full_game_data[(full_game_data.game_clock == 718.50) & (full_game_data.quarter == 1) & (full_game_data.team_id != -1)]
 
-courtPolygon = Polygon([(0,0),(0,50),(94,0),(94,50)])
+courtPolygon = Polygon([(0,0),(0,50),(94,50), (94,0)])
+
+def polygonList(df, radius):
+    polygonList = []
+    for idx, row in df.iterrows():
+        xCoor = row['x_loc']
+        yCoor = row['y_loc']
+        pts = generateCircle(xCoor, yCoor, radius, 20)
+        poly = Polygon(pts).buffer(0)
+
+        polygonList.append(poly)
+
+    return polygonList
 
 def generateCircle(xCoor, yCoor, radius, n):
     return [((math.cos(2*pi/n*x)* radius + xCoor) , (math.sin(2*pi/n*x)* radius) + yCoor) for x in range(0,n+1)]
+
+def plotCircle(points):
+    ring = LinearRing(points)
+    x, y = ring.xy
+    fig = plt.figure(1, figsize=(5,5), dpi=90)
+    ax = fig.add_subplot(111)
+
+    ax.plot(x, y, color='#6699cc', alpha=0.7,linewidth=3, solid_capstyle='round', zorder=2)
+    ax.set_title('Polygon')
+
+def intersectionArea(p1, p2):
+    print(p1, p2)
+    return p1.intersection(p2).area
+
+def generatePointArea(r):
+    return pi * (r * r)
+
+## takes points, a list of polygons
+def courtIntersection(points, r):
+    circleArea = generatePointArea(r)
+
+    totalIntersection = 0
+    for point in points: 
+        totalIntersection += (circleArea - intersectionArea(point, courtPolygon))
+
+    return totalIntersection
+
+## takes points, a list of polygons
+def pointsIntersection(points):
+    p1 = points[0]
+    p2 = points[1]
+    p3 = points[2]
+    p4 = points[3]
+    p5 = points[4]
+
+    total = 0
+    total += intersectionArea(p1, p2)
+    total += intersectionArea(p1, p3)
+    total += intersectionArea(p1, p4)
+    total += intersectionArea(p1, p5)
+    total += intersectionArea(p2, p3)
+    total += intersectionArea(p2, p4)
+    total += intersectionArea(p2, p5)
+    total += intersectionArea(p3, p4)
+    total += intersectionArea(p3, p5)
+    total += intersectionArea(p4, p5)
+
+    return total
+   
 
 
 
