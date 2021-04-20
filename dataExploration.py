@@ -52,6 +52,8 @@ full_game_data['SCOREMARGIN'] = full_game_data['SCOREMARGIN'].fillna(method='ffi
 full_game_data.loc[full_game_data.SCOREMARGIN == 'TIE', 'SCOREMARGIN'] = 0
 full_game_data['SCOREMARGIN'] = full_game_data['SCOREMARGIN'].fillna(0)
 full_game_data['SCOREMARGIN'] = full_game_data['SCOREMARGIN'].astype('int')
+full_game_dataStripped = full_game_data.drop_duplicates(subset= ['game_clock', 'quarter', 'player_id'], keep='last')
+
 
 ## Note: full_game_data Primary Key is: game_block + shot_clock + quarter
 
@@ -217,6 +219,7 @@ sampleFGD = full_game_data[(full_game_data.game_clock == 718.50) & (full_game_da
 
 courtPolygon = Polygon([(0,0),(0,50),(94,50), (94,0)])
 
+## Takes a dataframe and returns a list of polygons
 def polygonList(df, radius):
     polygonList = []
     for idx, row in df.iterrows():
@@ -229,9 +232,11 @@ def polygonList(df, radius):
 
     return polygonList
 
+## Takes an x-coordinates, y-coordinate, radius, number of points, and generates a circle 
 def generateCircle(xCoor, yCoor, radius, n):
     return [((math.cos(2*pi/n*x)* radius + xCoor) , (math.sin(2*pi/n*x)* radius) + yCoor) for x in range(0,n+1)]
 
+## Takes in points and plots the circle
 def plotCircle(points):
     ring = LinearRing(points)
     x, y = ring.xy
@@ -241,14 +246,15 @@ def plotCircle(points):
     ax.plot(x, y, color='#6699cc', alpha=0.7,linewidth=3, solid_capstyle='round', zorder=2)
     ax.set_title('Polygon')
 
+## Returns the intersection area of two polgygons
 def intersectionArea(p1, p2):
-    print(p1, p2)
     return p1.intersection(p2).area
 
+## Generates the area of a circle
 def generatePointArea(r):
     return pi * (r * r)
 
-## takes points, a list of polygons
+## takes points, a list of polygons, returns the intersection of polygons and a court
 def courtIntersection(points, r):
     circleArea = generatePointArea(r)
 
@@ -258,7 +264,7 @@ def courtIntersection(points, r):
 
     return totalIntersection
 
-## takes points, a list of polygons
+## takes points, a list of polygons, returns total intersecting area
 def pointsIntersection(points):
     p1 = points[0]
     p2 = points[1]
@@ -279,9 +285,70 @@ def pointsIntersection(points):
     total += intersectionArea(p4, p5)
 
     return total
-   
+
+## does not handle edge case of overlapping circle that are also out of bounds (and overlap is OOB)
+def generateSpacingMetric(df, radius): 
+    pList = polygonList(df, radius)
+    circleArea = generatePointArea(radius)
+
+    totalCourtIntersection = courtIntersection(pList, radius)
+    totalPointIntersection = pointsIntersection(pList)
+
+    totalIntersection = totalCourtIntersection + totalPointIntersection
+
+    coveredArea = (circleArea * len(df)) - totalIntersection
+
+    return coveredArea
 
 
+#%%
+full_game_data['team1CASpacing'] = -99
+full_game_data['team2CASpacing'] = -99
+
+full_game_data['HOMEDESCRIPTION'] = full_game_data['HOMEDESCRIPTION'].fillna('-')
+full_game_data['VISITORDESCRIPTION'] = full_game_data['VISITORDESCRIPTION'].fillna('-')
+
+for idx, row, in tqdm(full_game_data.iterrows(), total=full_game_data.shape[0]): 
+    if row['team1CASpacing'] != -99:
+        continue 
+    else: 
+        quarter = row['quarter']
+        game_clock = row['game_clock']
+        team = row['team_id']
+        homedes = row['HOMEDESCRIPTION']
+        visdes = row['VISITORDESCRIPTION']
+
+        if team == teamDict['team1']:
+            df = full_game_data[(full_game_data.quarter == quarter) & (full_game_data.game_clock == game_clock) & (full_game_data.team_id == teamDict['team1']) & (full_game_data.HOMEDESCRIPTION == homedes) & (full_game_data.VISITORDESCRIPTION == visdes)]
+
+            teamColumn = 'team1CASpacing'
+            otherTeamColumn = 'team2CASpacing'
+
+        elif team == teamDict['team2']:
+            df = full_game_data[(full_game_data.quarter == quarter) & (full_game_data.game_clock == game_clock) & (full_game_data.team_id == teamDict['team2']) & (full_game_data.HOMEDESCRIPTION == homedes) & (full_game_data.VISITORDESCRIPTION == visdes)]
+            teamColumn = 'team2CASpacing'
+            otherTeamColumn = 'team1CASpacing'
+
+        else:
+            continue
+
+        if len(df) != 5:
+            print('DF: ', df)
+            print('----------')
+
+            print('quarter :', quarter)
+            print('game_clock :', game_clock)
+
+            break
+
+        spacingMetric = generateSpacingMetric(df, 4)
+
+        full_game_data.loc[(full_game_data.quarter == quarter) & (full_game_data.game_clock == game_clock) & (full_game_data.team_id == team), otherTeamColumn] = 0
+
+        full_game_data.loc[(full_game_data.quarter == quarter) & (full_game_data.game_clock == game_clock) & (full_game_data.team_id == team), teamColumn] = spacingMetric
+
+
+        
 
 
 # %%
